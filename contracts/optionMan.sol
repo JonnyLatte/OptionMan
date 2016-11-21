@@ -81,7 +81,7 @@ contract OptionMan is owned
     
     function exercise(uint256 _value) 
         onlyBeforeExpire
-		returns (bool ok)		
+        returns (bool ok)		
     {
         uint payment = _value * price / units;
         if(!ownedToken(options).burn(_value,msg.sender)) throw;
