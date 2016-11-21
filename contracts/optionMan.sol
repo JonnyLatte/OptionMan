@@ -6,7 +6,7 @@ import "ownedToken.sol";
 
 contract OptionMan is owned
 {
-    address public currency;   // Token used to buy / exsise
+    address public currency;   // Token used to buy
     address public asset;      // Token on offer
     uint256 public price;      // Amount of currency needed to buy a lot (smallest units)
     uint256 public units;      // Amount of asset being sold in a lot (smallest units)
@@ -39,7 +39,9 @@ contract OptionMan is owned
         price = _price;
         units = _units;
         expireTime = now + _duration;
-        options = new ownedToken();
+        options = new ownedToken(); // token contract that is controlled by this contract
+									// tokens can be issued or burned at any target address by the owner 
+									// or transfered normally by holders
     }
     
     // seller locks asset and is given a token representing the option to buy it
