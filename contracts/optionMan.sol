@@ -38,10 +38,14 @@ contract OptionMan is owned
         asset = _asset;
         price = _price;
         units = _units;
-        expireTime = now + _duration;
-        options = new ownedToken(); // token contract that is controlled by this contract
-									// tokens can be issued or burned at any target address by the owner 
-									// or transfered normally by holders
+        expireTime = now + _duration;		
+		
+		// token contract that is controlled by this contract 
+		// tokens can be issued or burned at any target address by the owner 
+		// or transfered normally by holders:
+		
+        options = new ownedToken(); 
+
     }
     
     // seller locks asset and is given a token representing the option to buy it
