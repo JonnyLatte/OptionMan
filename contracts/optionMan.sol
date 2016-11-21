@@ -80,12 +80,14 @@ contract OptionMan is owned
     }
     
     function exercise(uint256 _value) 
-        onlyBeforeExpire 
+        onlyBeforeExpire
+		returns (bool ok)		
     {
         uint payment = _value * price / units;
         if(!ownedToken(options).burn(_value,msg.sender)) throw;
         if(!ERC20(currency).transferFrom(msg.sender, address(this),payment)) throw; 
         if(!ERC20(asset).transfer(msg.sender,_value)) throw; 
+		return true;
     } 
     
 }
