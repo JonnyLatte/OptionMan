@@ -78,6 +78,15 @@ contract OptionMan is owned
     {
         return ERC20(_token).transfer(msg.sender,_value);
     }
+	
+	// currency does not need to be locked 
+	
+	function withdrawCurrency(uint256 _value)
+        onlyOwner
+        returns (bool ok)
+    {
+        return ERC20(currency).transfer(msg.sender,_value);
+    }
     
     function exercise(uint256 _value) 
         onlyBeforeExpire
