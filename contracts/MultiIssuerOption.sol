@@ -13,7 +13,7 @@ contract MultiIssuerOption
     uint256 public expireTime;  // trading ends at this timestamp
     uint256 public fundingTime; // funding ends at this 
 
-    ownedToken public issuer; // token representing seller claims on contract funds
+    ownedToken public shares; // token representing seller claims on contract funds
     ownedToken public option; // token giving holder the right to buy asset with currency
 
     modifier onlyBeforeExpire() 
@@ -54,7 +54,7 @@ contract MultiIssuerOption
         units = _units;
         fundingTime = now + _fundingInterval;
         expireTime = now + _fundingInterval + _expireInterval;
-        issuer = new ownedToken();
+        shares = new ownedToken();
         option = new ownedToken();
     }
     
@@ -63,27 +63,42 @@ contract MultiIssuerOption
         returns (bool ok)
     {
         if(!ERC20(asset).transferFrom(msg.sender, address(this),_value)) throw; 
-        if(!ownedToken(issuer).issue(_value,msg.sender)) throw;
+        if(!ownedToken(shares).issue(_value,msg.sender)) throw;
         if(!ownedToken(option).issue(_value,msg.sender)) throw;
         return true;
     }
     
-    /* 
+    // calculae asset and currency cost for late issuance 
     
-    // after funding period it is possible for the contract to contain currency
+   function lateIssueCost(uint256 _shares) public returns (uint256 assetCost, uint256 currencyCost) {
+        uint256 totalCurrency = ERC20(currency).balanceOf(this);
+        uint256 totalAssets = ERC20(asset).balanceOf(this);
+        uint256 totalShares = ERC20(shares).totalSupply();
+        
+        if(totalShares == 0) throw;
+        
+        assetCost = _shares * totalAssets / totalShares;
+        currencyCost = _shares * totalCurrency / totalShares;
+    }
 
-    function lateIssue(uint256 _value) 
+    // funding contract after the funding period must preserve claim ratos
+    // to acheive this seller must add funds at the current ratio
+    // options are awareded for the asset added only so adding after exersise has occured
+    // has diminishing returns an no options can be generated when asset:currency
+    // ratio is at 0:1 because asset funds cannot be added while preserving the ratio
+    
+    function lateIssue(uint256 _numberOfShares) 
         onlyAfterFunding
         onlyBeforeExpire
         returns (bool ok)
     {
-        throw; 
-        
-        // seller is depositing _value amount of asset and needs to be awareded
-        // enough issuertokens so that they can claim that amount back
-        
-        // they also need to deposit enough currency to cover any currency 
-        // they may redeem in the pprocess
+        var (assetPayment, currencyPayment) = lateIssueCost(_numberOfShares);
+    
+        if(!ERC20(asset).transferFrom(msg.sender, address(this),assetPayment)) throw; 
+        if(!ERC20(currency).transferFrom(msg.sender, address(this),currencyPayment)) throw; 
+
+        if(!ownedToken(shares).issue(_numberOfShares,msg.sender)) throw;
+        if(!ownedToken(option).issue(assetPayment,msg.sender)) throw;
         
         return true;
     }
@@ -106,12 +121,18 @@ contract MultiIssuerOption
         return true;
     }
     
+    // get the value of a share in asset and currency 
+    
+    function shareValue(uint256 _value) public returns (uint256 assetValue, uint256 currencyValue) {
+        assetValue = ERC20(asset).balanceOf(this) * _value / ERC20(asset).totalSupply();
+        currencyValue = ERC20(currency).balanceOf(this) * _value / ERC20(currency).totalSupply();
+    }
+    
     function redeem(uint256 _value) internal returns (bool ok)
     {
-        uint256 assetValue = ERC20(asset).balanceOf(this) * _value / ERC20(asset).totalSupply();
-        uint256 currencyValue = ERC20(currency).balanceOf(this) * _value / ERC20(currency).totalSupply();
-
-        if(!ownedToken(issuer).burn(_value,msg.sender)) throw;
+        var (assetValue,currencyValue) = shareValue(_value);
+        
+        if(!ownedToken(shares).burn(_value,msg.sender)) throw;
         if(!ERC20(asset).transfer(msg.sender,assetValue)) throw;
         if(!ERC20(currency).transfer(msg.sender,assetValue)) throw;
         
@@ -132,7 +153,8 @@ contract MultiIssuerOption
     function earlyWithdrawFunds(uint256 _value)
         returns (bool ok) 
     {
-        if(!ownedToken(option).burn(_value,msg.sender)) throw;
+        var (assetValue,) = shareValue(_value);
+        if(!ownedToken(option).burn(assetValue,msg.sender)) throw;
         return redeem(_value);
     }
 }
