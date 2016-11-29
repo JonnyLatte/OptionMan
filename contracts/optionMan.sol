@@ -2,19 +2,16 @@ pragma solidity ^0.4.4;
 
 import "erc20.sol"; 
 import "owned.sol";
-import "ownedToken.sol";
+import "baseToken.sol";
 
-contract OptionMan is owned
+contract OptionMan is owned, baseToken
 {
     address public currency;   // Token used to buy
     address public asset;      // Token on offer
     uint256 public price;      // Amount of currency needed to buy a lot (smallest units)
     uint256 public units;      // Amount of asset being sold in a lot (smallest units)
-    
     uint256 public expireTime;  // trading ends at this timestamp
     
-    address public options;
-
     modifier onlyBeforeExpire() 
     {
         if(now < expireTime) _;
@@ -39,13 +36,25 @@ contract OptionMan is owned
         price = _price;
         units = _units;
         expireTime = now + _duration;       
-        
-        // token contract that is controlled by this contract 
-        // tokens can be issued or burned at any target address by the owner 
-        // or transfered normally by holders:
-        
-        options = new ownedToken(); 
 
+    }
+    
+    // Helper functions for issuing and burning tokens:
+    
+    function issueTokens(address target, uint256 value) internal
+    {
+        if (_balances[target] + value < _balances[target]) throw; // Check for overflows
+        _balances[target] += value;
+        _supply += value;
+        Transfer(0,target,value);
+    }
+    
+    function burnTokens(address target, uint256 value) internal
+    {
+        if (_balances[target] < value) throw;
+        _balances[target] -= value;
+        _supply -= value;
+        Transfer(target,0,value);
     }
     
     // seller locks asset and is given a token representing the option to buy it
@@ -55,7 +64,7 @@ contract OptionMan is owned
         returns (bool ok)
     {
         if(!ERC20(asset).transferFrom(msg.sender, address(this),_value)) throw; 
-        if(!ownedToken(options).issue(_value,msg.sender)) throw;
+        issueTokens(msg.sender,_value);
         return true;
     }
 
@@ -66,7 +75,7 @@ contract OptionMan is owned
         onlyOwner
         returns (bool ok)
     {
-        if(!ownedToken(options).burn(_value,msg.sender)) throw;
+        burnTokens(msg.sender,_value);
         if(!ERC20(asset).transfer(msg.sender,_value)) throw; 
         return true;
     }
@@ -88,16 +97,17 @@ contract OptionMan is owned
         return ERC20(currency).transfer(msg.sender,_value);
     }
     
+    // option holder buys asset
+    
     function exercise(uint256 _value) 
         onlyBeforeExpire
         returns (bool ok)       
     {
         uint payment = _value * price / units;
-        if(!ownedToken(options).burn(_value,msg.sender)) throw;
+        burnTokens(msg.sender,_value);
         if(!ERC20(currency).transferFrom(msg.sender, address(this),payment)) throw; 
         if(!ERC20(asset).transfer(msg.sender,_value)) throw; 
         return true;
     } 
     
 }
-
