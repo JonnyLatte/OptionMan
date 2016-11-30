@@ -4,27 +4,6 @@ import "erc20.sol";
 import "owned.sol";
 import "baseToken.sol";
 
-// token that can create and destroy balances at any address
-
-contract AppToken is baseToken {
-    
-    function issueTokens(address target, uint256 value) internal
-    {
-        if (_balances[target] + value < _balances[target]) throw; // Check for overflows
-        _balances[target] += value;
-        _supply += value;
-        Transfer(0,target,value);
-    }
-    
-    function burnTokens(address target, uint256 value) internal
-    {
-        if (_balances[target] < value) throw;
-        _balances[target] -= value;
-        _supply -= value;
-        Transfer(target,0,value);
-    }
-}
-
 // option contract manager
 
 contract OptionMan is owned, AppToken
