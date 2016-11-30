@@ -4,13 +4,37 @@ import "erc20.sol";
 import "owned.sol";
 import "baseToken.sol";
 
-contract OptionMan is owned, baseToken
+// token that can create and destroy balances at any address
+
+contract AppToken is baseToken {
+    
+    function issueTokens(address target, uint256 value) internal
+    {
+        if (_balances[target] + value < _balances[target]) throw; // Check for overflows
+        _balances[target] += value;
+        _supply += value;
+        Transfer(0,target,value);
+    }
+    
+    function burnTokens(address target, uint256 value) internal
+    {
+        if (_balances[target] < value) throw;
+        _balances[target] -= value;
+        _supply -= value;
+        Transfer(target,0,value);
+    }
+}
+
+// option contract manager
+
+contract OptionMan is owned, AppToken
 {
     address public currency;   // Token used to buy
     address public asset;      // Token on offer
     uint256 public price;      // Amount of currency needed to buy a lot (smallest units)
     uint256 public units;      // Amount of asset being sold in a lot (smallest units)
     uint256 public expireTime;  // trading ends at this timestamp
+    
     
     modifier onlyBeforeExpire() 
     {
@@ -37,24 +61,6 @@ contract OptionMan is owned, baseToken
         units = _units;
         expireTime = now + _duration;       
 
-    }
-    
-    // Helper functions for issuing and burning tokens:
-    
-    function issueTokens(address target, uint256 value) internal
-    {
-        if (_balances[target] + value < _balances[target]) throw; // Check for overflows
-        _balances[target] += value;
-        _supply += value;
-        Transfer(0,target,value);
-    }
-    
-    function burnTokens(address target, uint256 value) internal
-    {
-        if (_balances[target] < value) throw;
-        _balances[target] -= value;
-        _supply -= value;
-        Transfer(target,0,value);
     }
     
     // seller locks asset and is given a token representing the option to buy it
@@ -110,4 +116,7 @@ contract OptionMan is owned, baseToken
         return true;
     } 
     
+    struct foo {
+            mapping( address => uint ) _balances;
+    }
 }
