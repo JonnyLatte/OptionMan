@@ -105,7 +105,7 @@ contract CrowdFundedOption is AppToken {
         var currencyValue = currency.balanceOf(option) * _value / currency.totalSupply();
         
         // release asset funds
-        option.withdraw(asset,assetValue);
+        if(!option.withdraw(asset,assetValue)) throw;
         
         // transfer asset funds to sender
         if(!asset.transfer(msg.sender,assetValue)) throw;
