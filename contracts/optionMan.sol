@@ -95,7 +95,4 @@ contract OptionMan is owned, AppToken
         return true;
     } 
     
-    struct foo {
-            mapping( address => uint ) _balances;
-    }
 }
