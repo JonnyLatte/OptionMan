@@ -4,8 +4,6 @@ import "github.com/JonnyLatte/MiscSolidity/erc20.sol";
 import "github.com/JonnyLatte/MiscSolidity/owned.sol";
 import "github.com/JonnyLatte/MiscSolidity/appToken.sol";
 
-// option contract manager
-
 contract OptionMan is owned, appToken
 {
     address public currency;   // Token used to buy
@@ -17,13 +15,13 @@ contract OptionMan is owned, appToken
     
     modifier onlyBeforeExpire() 
     {
-        require(now < expireTime);
+        require(block.timestamp < expireTime);
         _;
     }
     
     modifier onlyAfterExpire() 
     {
-        require(now > expireTime);
+        require(block.timestamp > expireTime);
         _;
     }
     
@@ -38,7 +36,7 @@ contract OptionMan is owned, appToken
         asset = _asset;
         price = _price;
         units = _units;
-        expireTime = now + _duration;       
+        expireTime = block.timestamp + _duration;       
 
     }
     
@@ -90,7 +88,7 @@ contract OptionMan is owned, appToken
         onlyBeforeExpire
         returns (bool ok)       
     {
-        uint payment = _value * price / units;
+        uint payment = _value.safeMul(price).safeDiv(units);
         burnTokens(msg.sender,_value);
         require(ERC20(currency).transferFrom(msg.sender, address(this),payment)); 
         require(ERC20(asset).transfer(msg.sender,_value)); 
