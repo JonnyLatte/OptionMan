@@ -1,12 +1,12 @@
-pragma solidity ^0.4.4;
+pragma solidity ^0.4.12;
 
-import "erc20.sol"; 
-import "owned.sol";
-import "baseToken.sol";
+import "github.com/JonnyLatte/MiscSolidity/erc20.sol"; 
+import "github.com/JonnyLatte/MiscSolidity/owned.sol";
+import "github.com/JonnyLatte/MiscSolidity/appToken.sol";
 
 // option contract manager
 
-contract OptionMan is owned, AppToken
+contract OptionMan is owned, appToken
 {
     address public currency;   // Token used to buy
     address public asset;      // Token on offer
@@ -17,14 +17,14 @@ contract OptionMan is owned, AppToken
     
     modifier onlyBeforeExpire() 
     {
-        if(now < expireTime) _;
-        else throw;
+        require(now < expireTime);
+        _;
     }
     
     modifier onlyAfterExpire() 
     {
-        if(now > expireTime) _;
-        else throw;
+        require(now > expireTime);
+        _;
     }
     
     function OptionMan(
@@ -32,7 +32,7 @@ contract OptionMan is owned, AppToken
         address _asset, 
         uint256 _price, 
         uint256 _units, 
-        uint256 _duration) 
+        uint256 _duration) public
     {
         currency = _currency;
         asset = _asset;
@@ -44,11 +44,11 @@ contract OptionMan is owned, AppToken
     
     // seller locks asset and is given a token representing the option to buy it
     
-    function issue(uint _value)  
+    function issue(uint _value)  public 
         onlyOwner
         returns (bool ok)
     {
-        if(!ERC20(asset).transferFrom(msg.sender, address(this),_value)) throw; 
+        require(ERC20(asset).transferFrom(msg.sender, address(this),_value)); 
         issueTokens(msg.sender,_value);
         return true;
     }
@@ -56,42 +56,44 @@ contract OptionMan is owned, AppToken
     // at any time owner can release funds by controlling the corrisponding option
     // which will be burned.
     
-    function burn(uint _value)  
+    function burn(uint _value)  public
         onlyOwner
         returns (bool ok)
     {
         burnTokens(msg.sender,_value);
-        if(!ERC20(asset).transfer(msg.sender,_value)) throw; 
+        require(ERC20(asset).transfer(msg.sender,_value)); 
         return true;
     }
     
-     function withdraw(address _token, uint256 _value)
+     function withdraw(address _token, uint256 _value) public
         onlyOwner
         onlyAfterExpire
         returns (bool ok)
     {
-        return ERC20(_token).transfer(msg.sender,_value);
+        require(ERC20(_token).transfer(msg.sender,_value));
+        return true;
     }
     
     // currency does not need to be locked 
     
-    function withdrawCurrency(uint256 _value)
+    function withdrawCurrency(uint256 _value) public
         onlyOwner
-        returns (bool ok)
+        returns (bool)
     {
-        return ERC20(currency).transfer(msg.sender,_value);
+        require(ERC20(currency).transfer(msg.sender,_value));
+        return true;
     }
     
     // option holder buys asset
     
-    function exercise(uint256 _value) 
+    function exercise(uint256 _value) public
         onlyBeforeExpire
         returns (bool ok)       
     {
         uint payment = _value * price / units;
         burnTokens(msg.sender,_value);
-        if(!ERC20(currency).transferFrom(msg.sender, address(this),payment)) throw; 
-        if(!ERC20(asset).transfer(msg.sender,_value)) throw; 
+        require(ERC20(currency).transferFrom(msg.sender, address(this),payment)); 
+        require(ERC20(asset).transfer(msg.sender,_value)); 
         return true;
     } 
     
