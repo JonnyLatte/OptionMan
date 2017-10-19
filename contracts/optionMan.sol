@@ -42,28 +42,30 @@ contract OptionMan is owned, appToken
     
     // seller locks asset and is given a token representing the option to buy it
     
-    function issue(uint _value)  public 
+    function issue(uint _unitLots)  public 
         onlyOwner
         returns (bool ok)
     {
-        require(ERC20(asset).transferFrom(msg.sender, address(this),_value)); 
-        issueTokens(msg.sender,_value);
+        require(ERC20(asset).transferFrom(msg.sender, address(this),_unitLots.safeMul(units))); 
+        issueTokens(msg.sender,_unitLots);
         return true;
     }
 
     // at any time owner can release funds by controlling the corrisponding option
     // which will be burned.
     
-    function burn(uint _value)  public
+    function burn(uint _unitLots)  public
         onlyOwner
         returns (bool ok)
     {
-        burnTokens(msg.sender,_value);
-        require(ERC20(asset).transfer(msg.sender,_value)); 
+        burnTokens(msg.sender,_unitLots);
+        require(ERC20(asset).transfer(msg.sender,_unitLots.safeMul(units))); 
         return true;
     }
     
-     function withdraw(address _token, uint256 _value) public
+    // after the option expires the owner can withdraw any remaining asset tokens
+    
+    function withdraw(address _token, uint256 _value) public
         onlyOwner
         onlyAfterExpire
         returns (bool ok)
@@ -72,7 +74,7 @@ contract OptionMan is owned, appToken
         return true;
     }
     
-    // currency does not need to be locked 
+    // currency paid does not need to be locked 
     
     function withdrawCurrency(uint256 _value) public
         onlyOwner
@@ -84,14 +86,17 @@ contract OptionMan is owned, appToken
     
     // option holder buys asset
     
-    function exercise(uint256 _value) public
+    function exercise(uint256 _unitLots) public
         onlyBeforeExpire
         returns (bool ok)       
     {
-        uint payment = _value.safeMul(price).safeDiv(units);
-        burnTokens(msg.sender,_value);
+        uint payment = _unitLots.safeMul(price); // amount of currency tokens paid smallest units
+        uint purchace = _unitLots.safeMul(units); // amount of asset tokens bought smallest units
+        
+        burnTokens(msg.sender,_unitLots);
+        
         require(ERC20(currency).transferFrom(msg.sender, address(this),payment)); 
-        require(ERC20(asset).transfer(msg.sender,_value)); 
+        require(ERC20(asset).transfer(msg.sender,purchace)); 
         return true;
     } 
     
